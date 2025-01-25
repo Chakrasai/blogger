@@ -1,4 +1,3 @@
-// Required Modules
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
@@ -6,7 +5,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-const multer = require('multer');
+const upload = require('./upload'); // Import the custom multer configuration
 
 // Models
 const userModel = require('./models/user');
@@ -15,12 +14,12 @@ const blogModel = require('./models/blog');
 // Constants
 const app = express();
 const secretKey = 'blog';
-const upload = multer({ dest: 'uploads/images' });
 
 // Middleware
 app.use(cors({ credentials: true, origin: 'http://localhost:3000' }));
 app.use(bodyParser.json());
 app.use(cookieParser());
+app.use('/public', express.static(path.join(__dirname, 'public'))); // Serve static files
 
 // MongoDB Connection
 mongoose.connect('mongodb+srv://blog:blog@blog.fffqn.mongodb.net/?retryWrites=true&w=majority')
@@ -41,30 +40,6 @@ const isLoggedIn = (req, res, next) => {
     next();
   });
 };
-
-// Routes
-
-// User Registration
-app.post('/register', async (req, res) => {
-  const { username, password } = req.body;
-
-  if (!username || !password) {
-    return res.status(400).json({ error: 'Username and password are required.' });
-  }
-
-  try {
-    const existingUser = await userModel.findOne({ username });
-    if (existingUser) {
-      return res.status(409).json({ error: 'Username already exists.' });
-    }
-
-    const user = await userModel.create({ username, password });
-    res.status(201).json({ message: 'User registered successfully', userId: user._id });
-  } catch (error) {
-    console.error('Error during registration:', error);
-    res.status(500).json({ error: 'Internal Server Error' });
-  }
-});
 
 // User Login
 app.post('/login', async (req, res) => {
@@ -105,11 +80,13 @@ app.post('/postcreation', isLoggedIn, upload.single('image'), async (req, res) =
   const { title, summary, content } = req.body;
 
   try {
+    const imagePath = req.file ? `images/uploads/${req.file.filename}` : null;
+
     const post = await blogModel.create({
       title,
       summary,
       content,
-      image: req.file ? req.file.filename : null,
+      image: imagePath,
     });
 
     const user = await userModel.findById(req.user.id);
@@ -124,6 +101,17 @@ app.post('/postcreation', isLoggedIn, upload.single('image'), async (req, res) =
   } catch (error) {
     console.error('Error creating post:', error);
     res.status(500).json({ error: 'Failed to create post' });
+  }
+});
+
+// Get All Blog Posts
+app.get('/posts', async (req, res) => {
+  try {
+    const posts = await blogModel.find();
+    res.status(200).json(posts);
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
 
