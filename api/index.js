@@ -5,7 +5,7 @@ const path = require('path');
 const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const cookieParser = require('cookie-parser');
-const upload = require('./upload'); // Import the custom multer configuration
+const upload = require('./upload'); 
 
 // Models
 const userModel = require('./models/user');
@@ -19,7 +19,7 @@ const secretKey = 'blog';
 app.use(cors({ credentials: true, origin: 'http://localhost:3000' }));
 app.use(bodyParser.json());
 app.use(cookieParser());
-app.use('/public', express.static(path.join(__dirname, 'public'))); // Serve static files
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // MongoDB Connection
 mongoose.connect('mongodb+srv://blog:blog@blog.fffqn.mongodb.net/?retryWrites=true&w=majority')
@@ -80,7 +80,7 @@ app.post('/postcreation', isLoggedIn, upload.single('image'), async (req, res) =
   const { title, summary, content } = req.body;
 
   try {
-    const imagePath = req.file ? `images/uploads/${req.file.filename}` : null;
+    const imagePath = req.file ? `uploads/images/${req.file.filename}` : null;
 
     const post = await blogModel.create({
       title,
@@ -108,12 +108,21 @@ app.post('/postcreation', isLoggedIn, upload.single('image'), async (req, res) =
 app.get('/posts', async (req, res) => {
   try {
     const posts = await blogModel.find();
-    res.status(200).json(posts);
+    res.json(posts);
   } catch (error) {
     console.error('Error fetching posts:', error);
     res.status(500).json({ error: 'Failed to fetch posts' });
   }
 });
+
+// app.get('/post/:id',async (req,res) =>{
+//   // const {postid} = req.params
+//   const post = await blogModel.findById(req.params.id);
+//   if (!post) {
+//     return res.status(404).json({ error: 'Post not found' });
+//   }
+//   res.status(200).json(post);
+// })  
 
 // Server
 app.listen(4000, () => console.log('Server is running on port 4000'));
